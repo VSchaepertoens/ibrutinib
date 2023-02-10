@@ -136,6 +136,18 @@ res[adj.P.Val < 0.05][,.N, by = c("coef", "direction")]
 res[,.N, by = c("coef", "direction")]
 
 
+##Wilcoxon signed rank test-----------------------------------------------------
+
+?wilcox.test
+res_wt <- 1
+
+for (i in 1:nrow(data_matrix)) {
+  res_test <- wilcox.test(data_matrix[i,1:3],
+                          data_matrix[i,4:6], 
+                          paired = TRUE)
+  res_wt[i] <- res_test$p.value
+}
+
 
 
 
