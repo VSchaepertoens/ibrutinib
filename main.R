@@ -1,9 +1,12 @@
 #Analysis of metabolomics data
 #Pre-processing of data https://github.com/biosustain/snakemake_UmetaFlow
-#Data-cleaning of data https://github.com/Functional-Metabolomics-Lab/Statistical-analysis-of-non-targeted-LC-MSMS-data/blob/main/Combined_Notebooks/Statistical_Analysis_Summerschool_22_python.ipynb
+#Cleaning of data https://github.com/Functional-Metabolomics-Lab/Statistical-analysis-of-non-targeted-LC-MSMS-data/blob/main/Combined_Notebooks/Statistical_Analysis_Summerschool_22_python.ipynb
 
 #loading libraries
 library(tidyverse)
+library(pheatmap)
+library(limma)
+
 
 #Loading dataset----------------------------------------------------------------
 data_matrix_scaled <- read.table("data/Scaled-feature-table-for-statistical-analysis(3).tsv", 
@@ -59,6 +62,38 @@ rownames(meta_data) == colnames(data_matrix)
 
 pheno_data <- meta_data
 
+#Data exploration----------------------------------------------------------------
+#Plot density and boxplot  
+plot(density(data_matrix))
 
+boxplot(data_matrix,
+        las = 2,
+        names = pheno_data$sample_name,
+        ylim = c(-4,6))
+
+#Plot heatmap of correlations
+pheatmap(cor(data_matrix,method = "spearman"), 
+         labels_col = pheno_data$sample_name, 
+         labels_row = pheno_data$sample_name)
+
+#Plot PCA
+plotMDS(data_matrix, 
+        labels = pheno_data$experiment, 
+        gene.selection = "common", 
+        var.explained = TRUE)
+
+mds <- plotMDS(data_matrix, 
+               labels = pheno_data$sample_name, 
+               gene.selection = "common", 
+               var.explained = TRUE)
+
+var_explained <- as.data.frame(mds$var.explained[1:7]*100)
+colnames(var_explained) <- c("variance")
+
+ggplot(var_explained, aes(x = rownames(var_explained), y = variance)) +
+  geom_col() +
+  geom_text(aes(label = round(variance, digits = 2)),vjust = -0.2) +
+  xlab("principal component number") +
+  ylab("variance (%)")
 
 
