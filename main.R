@@ -1,6 +1,7 @@
 #Analysis of metabolomics data
 #Pre-processing of data https://github.com/biosustain/snakemake_UmetaFlow
 #Cleaning of data https://github.com/Functional-Metabolomics-Lab/Statistical-analysis-of-non-targeted-LC-MSMS-data/blob/main/Combined_Notebooks/Statistical_Analysis_Summerschool_22_python.ipynb
+#data is not log2 transformed
 
 #loading libraries
 library(tidyverse)
@@ -95,5 +96,74 @@ ggplot(var_explained, aes(x = rownames(var_explained), y = variance)) +
   geom_text(aes(label = round(variance, digits = 2)),vjust = -0.2) +
   xlab("principal component number") +
   ylab("variance (%)")
+
+#Single-channel experimental design - Two Groups--------------------------------
+
+des <- copy(pheno_data)
+unique(des$treatment)
+des$treatment <- factor(des$treatment,
+                        levels = c("control", "ibrutinib"))
+
+#the first coefficient estimates the mean intensity for control and plays the role
+#of an intercept. The second coefficient estimates the difference between ibrutinib and control
+des <- model.matrix(~ treatment, 
+                    data = des)
+
+# Model fit 
+fit <- lmFit(data_matrix, des)
+fit <- eBayes(fit)
+
+#Extract results
+coefs <- grep("treatment", colnames(coef(fit)), value = TRUE)
+res <- data.table()
+
+res <- rbind(res, data.table(
+  topTable(fit, coef = coefs, adjust.method = "BH", number = nrow(data_matrix)),
+  keep.rownames = TRUE,
+  coef = gsub("treatment", "", coefs))
+)
+
+res[,direction := ifelse(logFC > 0, "up", "down")]
+
+res[coef == "ibrutinib"][adj.P.Val < 0.05]
+res[coef == "ibrutinib"][P.Value < 0.05]
+
+# Summarize and Plot results 
+
+# Number of significant hits
+res[adj.P.Val < 0.05][,.N, by = c("coef", "direction")]
+# Number of tested
+res[,.N, by = c("coef", "direction")]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
