@@ -148,6 +148,21 @@ for (i in 1:nrow(data_matrix)) {
   res_wt[i] <- res_test$p.value
 }
 
+#Compare p.values of limma stats and Wilcoxon signed rank tests
+stats_res_wt <- data.frame('metabolites' = rownames(data_matrix),
+                           'wilcox_pval' = res_wt)
+stats_res_limma <- data.frame('metabolites' = res$rn,
+                              'limma_pval' = res$P.Value)
+
+stats_res <- stats_res_wt %>% inner_join(stats_res_limma,
+                                         by = c('metabolites'))
+
+ggplot(data = stats_res,mapping = aes(x = wilcox_pval, y = limma_pval)) +
+  geom_point() +
+  geom_smooth() +
+  ylim(0, 0.1) +
+  xlim(0, 0.4)
+
 
 
 
