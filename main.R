@@ -7,6 +7,7 @@
 library(tidyverse)
 library(pheatmap)
 library(limma)
+library(data.table)
 
 
 #Loading dataset----------------------------------------------------------------
