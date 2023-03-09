@@ -11,7 +11,7 @@ library(data.table)
 
 
 #Loading dataset----------------------------------------------------------------
-data_matrix_scaled <- read.table("data/Scaled-feature-table-for-statistical-analysis(3).tsv", 
+data_matrix_scaled <- read.table("data/RP_pos/RP_pos_10ppm_Scaled-feature-table-for-statistical-analysis.tsv", 
                                  header = TRUE, 
                                  check.names = FALSE)
 
@@ -19,50 +19,25 @@ data_matrix_scaled <- read.table("data/Scaled-feature-table-for-statistical-anal
 
 data_matrix_scaled_transposed <- t(data_matrix_scaled)
 
-data_matrix <- matrix(as.numeric(data_matrix_scaled_transposed[-c(1:3),]),
-                      ncol = 18)
-rownames(data_matrix) <- rownames(data_matrix_scaled_transposed[4:676,])
+data_matrix <- matrix(as.numeric(data_matrix_scaled_transposed[-c(1:2),]),
+                      ncol = 25)
+rownames(data_matrix) <- rownames(data_matrix_scaled_transposed[3:2797,])
 
 #Load meta data
-pheno_data <- as.data.frame(data_matrix_scaled[,c(1:3)])
-pData <- read.csv("data/pData_removedBlanks_removedPool.csv")
-pheno_data$replicate <- pData$repetition
-pheno_data$experiment <- pData$experiment
+pheno_data <- as.data.frame(data_matrix_scaled[,c(1:2)])
+#pData <- read.table("data/RP_pos/RP_pos_10ppm_MetaData-28022023-11-36.tsv")
+#pheno_data$replicate <- pData$repetition
+#pheno_data$experiment <- pData$experiment
+pheno_data$replicate <- c(rep(c(1,2,3),6), rep(c(1),7))
+pheno_data$vial <- c(rep(c(1),3),rep(c(2),3),rep(c(3),3),rep(c(4),3),rep(c(5),3),rep(c(6),3), c(7, 8, 9, 10, 11, 12, 13))
 pheno_data$sample_name <- paste(pheno_data$ATTRIBUTE_Sample,
                                 pheno_data$replicate, 
-                                pheno_data$experiment, 
+                                pheno_data$vial, 
                                 sep = "_")
 
 colnames(data_matrix) <-  rownames(pheno_data)
 rownames(pheno_data) == colnames(data_matrix) 
 
-#Calculate row means of technical replicates------------------------------------------
-data_matrix_scaled$experiment <- pheno_data$experiment
-data_matrix_scaled <- data_matrix_scaled[,-c(1:3)]
-
-data_matrix_scaled_means <- data_matrix_scaled %>%
-  group_by(experiment) %>%
-  summarise_all(mean)
-
-data_matrix_scaled_means$treatment <- c('control','control','control','ibrutinib','ibrutinib','ibrutinib')
-
-#Final datamatrix and pheno data
-data_matrix_scaled_transposed <- t(data_matrix_scaled_means)
-data_matrix <- matrix(as.numeric(data_matrix_scaled_transposed[2:674,]), ncol = 6)
-
-
-meta_data <- data.frame(experiment = data_matrix_scaled_means$experiment,
-                        treatment = data_matrix_scaled_means$treatment)
-
-meta_data$sample_name <- paste(meta_data$treatment,
-                               meta_data$experiment, 
-                               sep = "_")
-rownames(data_matrix) <- rownames(data_matrix_scaled_transposed[2:674,])
-colnames(data_matrix) <- meta_data$sample_name
-rownames(meta_data) <- meta_data$sample_name
-rownames(meta_data) == colnames(data_matrix) 
-
-pheno_data <- meta_data
 
 #Data exploration----------------------------------------------------------------
 #Plot density and boxplot  
@@ -80,7 +55,7 @@ pheatmap(cor(data_matrix,method = "spearman"),
 
 #Plot PCA
 plotMDS(data_matrix, 
-        labels = pheno_data$experiment, 
+        labels = pheno_data$sample_name, 
         gene.selection = "common", 
         var.explained = TRUE)
 
@@ -98,16 +73,20 @@ ggplot(var_explained, aes(x = rownames(var_explained), y = variance)) +
   xlab("principal component number") +
   ylab("variance (%)")
 
+#Select non-pool samples -------------------------------------------------------
+data_matrix <- data_matrix[,1:18]
+pheno_data <- pheno_data[1:18,]
+
 #Single-channel experimental design - Two Groups--------------------------------
 
 des <- copy(pheno_data)
-unique(des$treatment)
-des$treatment <- factor(des$treatment,
-                        levels = c("control", "ibrutinib"))
+unique(des$ATTRIBUTE_Sample)
+des$ATTRIBUTE_Sample <- factor(des$ATTRIBUTE_Sample,
+                        levels = c("Ctrl", "Ibr"))
 
 #the first coefficient estimates the mean intensity for control and plays the role
 #of an intercept. The second coefficient estimates the difference between ibrutinib and control
-des <- model.matrix(~ treatment, 
+des <- model.matrix(~ ATTRIBUTE_Sample, 
                     data = des)
 
 # Model fit 
@@ -115,19 +94,19 @@ fit <- lmFit(data_matrix, des)
 fit <- eBayes(fit)
 
 #Extract results
-coefs <- grep("treatment", colnames(coef(fit)), value = TRUE)
+coefs <- grep("ATTRIBUTE_Sample", colnames(coef(fit)), value = TRUE)
 res <- data.table()
 
 res <- rbind(res, data.table(
   topTable(fit, coef = coefs, adjust.method = "BH", number = nrow(data_matrix)),
   keep.rownames = TRUE,
-  coef = gsub("treatment", "", coefs))
+  coef = gsub("ATTRIBUTE_Sample", "", coefs))
 )
 
 res[,direction := ifelse(logFC > 0, "up", "down")]
 
-res[coef == "ibrutinib"][adj.P.Val < 0.05]
-res[coef == "ibrutinib"][P.Value < 0.05]
+res[coef == "Ibr"][adj.P.Val < 0.05]
+res[coef == "Ibr"][P.Value < 0.05]
 
 # Summarize and Plot results 
 
@@ -136,8 +115,35 @@ res[adj.P.Val < 0.05][,.N, by = c("coef", "direction")]
 # Number of tested
 res[,.N, by = c("coef", "direction")]
 
+#Calculate row means of technical replicates------------------------------------------
+data_matrix_scaled <- data_matrix_scaled[1:18, 3:2797]
+data_matrix_scaled$experiment <- pheno_data$vial
+#data_matrix_scaled <- data_matrix_scaled[,-c(1:3)]
 
-##Wilcoxon signed rank test-----------------------------------------------------
+data_matrix_scaled_means <- data_matrix_scaled %>%
+  group_by(experiment) %>%
+  summarise_all(mean)
+
+data_matrix_scaled_means$ATTRIBUTE_Sample <- c(rep(c('Ctrl'),3), rep(c('Ibr'),3))
+
+#Final datamatrix and pheno data
+data_matrix_scaled_transposed <- t(data_matrix_scaled_means)
+data_matrix <- matrix(as.numeric(data_matrix_scaled_transposed[2:2796,]), ncol = 6)
+
+
+meta_data <- data.frame(vial = data_matrix_scaled_means$experiment,
+                        ATTRIBUTE_Sample = data_matrix_scaled_means$ATTRIBUTE_Sample)
+
+meta_data$sample_name <- paste(meta_data$ATTRIBUTE_Sample,
+                               meta_data$vial, 
+                               sep = "_")
+rownames(data_matrix) <- rownames(data_matrix_scaled_transposed[2:2796,])
+colnames(data_matrix) <- meta_data$sample_name
+rownames(meta_data) <- meta_data$sample_name
+rownames(meta_data) == colnames(data_matrix) 
+
+pheno_data <- meta_data
+#Wilcoxon signed rank test-----------------------------------------------------
 
 ?wilcox.test
 res_wt <- 1
@@ -160,9 +166,9 @@ stats_res <- stats_res_wt %>% inner_join(stats_res_limma,
 
 ggplot(data = stats_res,mapping = aes(x = wilcox_pval, y = limma_pval)) +
   geom_point() +
-  geom_smooth() +
-  ylim(0, 0.1) +
-  xlim(0, 0.4)
+  geom_smooth() 
+
+
 
 
 
