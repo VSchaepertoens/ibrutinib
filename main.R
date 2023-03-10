@@ -11,7 +11,7 @@ library(data.table)
 
 
 #Loading dataset----------------------------------------------------------------
-data_matrix_scaled <- read.table("data/RP_pos/RP_pos_10ppm_Scaled-feature-table-for-statistical-analysis.tsv", 
+data_matrix_scaled <- read.table("data/RP_neg/RP_neg_10ppm_Scaled-feature-table-for-statistical-analysis.tsv", 
                                  header = TRUE, 
                                  check.names = FALSE)
 
@@ -20,8 +20,9 @@ data_matrix_scaled <- read.table("data/RP_pos/RP_pos_10ppm_Scaled-feature-table-
 data_matrix_scaled_transposed <- t(data_matrix_scaled)
 
 data_matrix <- matrix(as.numeric(data_matrix_scaled_transposed[-c(1:2),]),
-                      ncol = 25)
-rownames(data_matrix) <- rownames(data_matrix_scaled_transposed[3:2797,])
+                      ncol = nrow(data_matrix_scaled))
+
+rownames(data_matrix) <- rownames(data_matrix_scaled_transposed[3:nrow(data_matrix_scaled_transposed),])
 
 #Load meta data
 pheno_data <- as.data.frame(data_matrix_scaled[,c(1:2)])
@@ -115,8 +116,10 @@ res[adj.P.Val < 0.05][,.N, by = c("coef", "direction")]
 # Number of tested
 res[,.N, by = c("coef", "direction")]
 
-#Calculate row means of technical replicates------------------------------------------
-data_matrix_scaled <- data_matrix_scaled[1:18, 3:2797]
+write.csv(x = res, file = "data/RP_neg/analysis_technical_replicates/RP_neg_limma_results_table.csv")
+
+#Calculate row means of technical replicates of non-pool samples------------------------------------------
+data_matrix_scaled <- data_matrix_scaled[1:ncol(data_matrix), 3:ncol(data_matrix_scaled)]
 data_matrix_scaled$experiment <- pheno_data$vial
 #data_matrix_scaled <- data_matrix_scaled[,-c(1:3)]
 
@@ -128,7 +131,7 @@ data_matrix_scaled_means$ATTRIBUTE_Sample <- c(rep(c('Ctrl'),3), rep(c('Ibr'),3)
 
 #Final datamatrix and pheno data
 data_matrix_scaled_transposed <- t(data_matrix_scaled_means)
-data_matrix <- matrix(as.numeric(data_matrix_scaled_transposed[2:2796,]), ncol = 6)
+data_matrix <- matrix(as.numeric(data_matrix_scaled_transposed[2:(nrow(data_matrix_scaled_transposed) - 1),]), ncol = 6)
 
 
 meta_data <- data.frame(vial = data_matrix_scaled_means$experiment,
@@ -137,7 +140,7 @@ meta_data <- data.frame(vial = data_matrix_scaled_means$experiment,
 meta_data$sample_name <- paste(meta_data$ATTRIBUTE_Sample,
                                meta_data$vial, 
                                sep = "_")
-rownames(data_matrix) <- rownames(data_matrix_scaled_transposed[2:2796,])
+rownames(data_matrix) <- rownames(data_matrix_scaled_transposed[2:(nrow(data_matrix_scaled_transposed) - 1),])
 colnames(data_matrix) <- meta_data$sample_name
 rownames(meta_data) <- meta_data$sample_name
 rownames(meta_data) == colnames(data_matrix) 
