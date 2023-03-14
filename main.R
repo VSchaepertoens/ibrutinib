@@ -11,26 +11,26 @@ library(data.table)
 
 
 #Loading dataset----------------------------------------------------------------
-data_matrix_scaled <- read.table("data/RP_neg/RP_neg_10ppm_Scaled-feature-table-for-statistical-analysis.tsv", 
-                                 header = TRUE, 
-                                 check.names = FALSE)
+# data_matrix_scaled <- read.table("data/HILIC_pos/HILIC_pos_Scaled-feature-table-for-statistical-analysis.tsv", sep = '\t', header = TRUE)
+
+data_matrix_scaled <- read.csv("data/HILIC_pos/HILIC_pos_Scaled-feature-table-for-statistical-analysis.tsv", sep = "\t", check.names = FALSE)
 
 #Data restructuring-------------------------------------------------------------
 
 data_matrix_scaled_transposed <- t(data_matrix_scaled)
 
-data_matrix <- matrix(as.numeric(data_matrix_scaled_transposed[-c(1:2),]),
+data_matrix <- matrix(as.numeric(data_matrix_scaled_transposed[-c(1:3),]),
                       ncol = nrow(data_matrix_scaled))
 
-rownames(data_matrix) <- rownames(data_matrix_scaled_transposed[3:nrow(data_matrix_scaled_transposed),])
+rownames(data_matrix) <- rownames(data_matrix_scaled_transposed[4:nrow(data_matrix_scaled_transposed),])
 
 #Load meta data
-pheno_data <- as.data.frame(data_matrix_scaled[,c(1:2)])
+pheno_data <- as.data.frame(data_matrix_scaled[,c(1:3)])
 #pData <- read.table("data/RP_pos/RP_pos_10ppm_MetaData-28022023-11-36.tsv")
 #pheno_data$replicate <- pData$repetition
 #pheno_data$experiment <- pData$experiment
-pheno_data$replicate <- c(rep(c(1,2,3),6), rep(c(1),7))
-pheno_data$vial <- c(rep(c(1),3),rep(c(2),3),rep(c(3),3),rep(c(4),3),rep(c(5),3),rep(c(6),3), c(7, 8, 9, 10, 11, 12, 13))
+pheno_data$replicate <- c(rep(c(1,2,3),6), rep(c(1),11))
+pheno_data$vial <- c(rep(c(1),3),rep(c(2),3),rep(c(3),3),rep(c(4),3),rep(c(5),3),rep(c(6),3), c(7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17))
 pheno_data$sample_name <- paste(pheno_data$ATTRIBUTE_Sample,
                                 pheno_data$replicate, 
                                 pheno_data$vial, 
@@ -116,10 +116,10 @@ res[adj.P.Val < 0.05][,.N, by = c("coef", "direction")]
 # Number of tested
 res[,.N, by = c("coef", "direction")]
 
-write.csv(x = res, file = "data/RP_neg/analysis_technical_replicates/RP_neg_limma_results_table.csv")
+write.csv(x = res, file = "data/HILIC_pos/analysis_technical_replicates_averaged/HILIC_pos_limma_results_table.csv")
 
 #Calculate row means of technical replicates of non-pool samples------------------------------------------
-data_matrix_scaled <- data_matrix_scaled[1:ncol(data_matrix), 3:ncol(data_matrix_scaled)]
+data_matrix_scaled <- data_matrix_scaled[1:ncol(data_matrix), 4:ncol(data_matrix_scaled)]
 data_matrix_scaled$experiment <- pheno_data$vial
 #data_matrix_scaled <- data_matrix_scaled[,-c(1:3)]
 
